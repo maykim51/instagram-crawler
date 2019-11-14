@@ -1,3 +1,10 @@
+#venv
+venv
+venv/
+
+#json
+*.json
+
 *.log
 .DS_Store
 .vscode/

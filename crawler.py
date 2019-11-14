@@ -9,6 +9,13 @@ from io import open
 from inscrawler import InsCrawler
 from inscrawler.settings import override_settings
 from inscrawler.settings import prepare_override_settings
+import filter_posts
+
+import pymongo
+from pymongo import MongoClient
+client = MongoClient('localhost', 27017)
+db = client['scc-hotplace']
+collection = db['posts']
 
 
 def usage():
@@ -50,13 +57,24 @@ def arg_required(args, fields=[]):
             sys.exit()
 
 
-def output(data, filepath):
+def output(data, filepath, tag=""):
     out = json.dumps(data, ensure_ascii=False)
+
+    filtered_out = filter_posts.start_filter(out, tag)
+    
+    collection.drop()
+    collection.insert_many(json.loads(filtered_out))
+    
+
+    ## USE FOR DEBUGGING ###
     if filepath:
         with open(filepath, "w", encoding="utf8") as f:
             f.write(out)
     else:
         print(out)
+    ###################
+
+        
 
 
 if __name__ == "__main__":
@@ -93,7 +111,11 @@ if __name__ == "__main__":
     elif args.mode == "hashtag":
         arg_required("tag")
         output(
-            get_posts_by_hashtag(args.tag, args.number or 100, args.debug), args.output
+            get_posts_by_hashtag(args.tag, args.number or 100, args.debug), args.output, args.tag
         )
     else:
         usage()
+    
+    # output(
+    #     get_posts_by_hashtag("서울숲맛집", 12, args.debug), args.output, args.tag
+    # )
