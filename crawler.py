@@ -3,8 +3,6 @@ from __future__ import unicode_literals
 
 import argparse
 import json
-import sys
-from io import open
 
 from inscrawler import InsCrawler
 from inscrawler.settings import override_settings
@@ -17,105 +15,55 @@ client = MongoClient('localhost', 27017)
 db = client['scc-hotplace']
 collection = db['posts']
 
-
-def usage():
-    return """
-        python crawler.py posts -u cal_foodie -n 100 -o ./output
-        python crawler.py posts_full -u cal_foodie -n 100 -o ./output
-        python crawler.py profile -u cal_foodie -o ./output
-        python crawler.py profile_script -u cal_foodie -o ./output
-        python crawler.py hashtag -t taiwan -o ./output
-
-        The default number for fetching posts via hashtag is 100.
-    """
-
-
-def get_posts_by_user(username, number, detail, debug):
-    ins_crawler = InsCrawler(has_screen=debug)
-    return ins_crawler.get_user_posts(username, number, detail)
-
-
-def get_profile(username):
-    ins_crawler = InsCrawler()
-    return ins_crawler.get_user_profile(username)
-
-
-def get_profile_from_script(username):
-    ins_cralwer = InsCrawler()
-    return ins_cralwer.get_user_profile_from_script_shared_data(username)
-
+from collections import OrderedDict
 
 def get_posts_by_hashtag(tag, number, debug):
     ins_crawler = InsCrawler(has_screen=debug)
     return ins_crawler.get_latest_posts_by_tag(tag, number)
 
 
-def arg_required(args, fields=[]):
-    for field in fields:
-        if not getattr(args, field):
-            parser.print_help()
-            sys.exit()
-
-
-def output(data, filepath, tag=""):
+def output(data, tag=""):
     out = json.dumps(data, ensure_ascii=False)
 
-    filtered_out = filter_posts.start_filter(out, tag)
+    out = filter_posts.start_filter(out, tag)
     
-    collection.drop()
-    collection.insert_many(json.loads(filtered_out))
-    
+    # collection.drop()
+    collection.insert_many(json.loads(out))
 
-    ## USE FOR DEBUGGING ###
-    if filepath:
-        with open(filepath, "w", encoding="utf8") as f:
-            f.write(out)
-    else:
-        print(out)
-    ###################
+def sort_posts_per_area(area_name):
+    db["areas"].delete_many({"area_name": area_name})
 
+    temp_dict = {}
+    posts = db["posts"].find({"area_name": area_name})
+    print(posts.count())
+    for doc in posts:
+        venue_name = doc["venue_name"]
+        if venue_name not in temp_dict:
+            temp_dict[venue_name] = {"num_of_posts": 1, "posts": [doc["_id"]]}
+        else: 
+            temp_dict[venue_name]["posts"].append(doc["_id"])
+            temp_dict[venue_name]["num_of_posts"] += 1
+
+    db["areas"].insert_one({"area_name":area_name, "venues": temp_dict})
+    print("check reading")
+    data = db["areas"].find_one({"area_name": "성수"})
+    print(data)
         
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Instagram Crawler", usage=usage())
-    parser.add_argument(
-        "mode", help="options: [posts, posts_full, profile, profile_script, hashtag]"
-    )
-    parser.add_argument("-n", "--number", type=int, help="number of returned posts")
-    parser.add_argument("-u", "--username", help="instagram's username")
-    parser.add_argument("-t", "--tag", help="instagram's tag name")
-    parser.add_argument("-o", "--output", help="output file name(json format)")
-    parser.add_argument("--debug", action="store_true")
-
+    parser = argparse.ArgumentParser(description="Instagram Crawler")
     prepare_override_settings(parser)
-
     args = parser.parse_args()
-
     override_settings(args)
 
-    if args.mode in ["posts", "posts_full"]:
-        arg_required("username")
-        output(
-            get_posts_by_user(
-                args.username, args.number, args.mode == "posts_full", args.debug
-            ),
-            args.output,
-        )
-    elif args.mode == "profile":
-        arg_required("username")
-        output(get_profile(args.username), args.output)
-    elif args.mode == "profile_script":
-        arg_required("username")
-        output(get_profile_from_script(args.username), args.output)
-    elif args.mode == "hashtag":
-        arg_required("tag")
-        output(
-            get_posts_by_hashtag(args.tag, args.number or 100, args.debug), args.output, args.tag
-        )
-    else:
-        usage()
-    
+    # collection.drop()
     # output(
-    #     get_posts_by_hashtag("서울숲맛집", 12, args.debug), args.output, args.tag
+    #         get_posts_by_hashtag("서울숲맛집", 5, False), "서울숲맛집"
     # )
+    # output(
+    #         get_posts_by_hashtag("성수맛집", 5, False), "성수맛집"
+    # )
+    # output(
+    #         get_posts_by_hashtag("성수맛집", 5, False), "성수맛집"
+    # )
+    sort_posts_per_area("성수")

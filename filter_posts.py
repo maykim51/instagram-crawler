@@ -1,11 +1,14 @@
 import json
 from invalid_tags import invalid_tags
 from venues.manage_venue import search_venue
+from area_list import map_query_to_venue
 
 
 def set_area_name(tag):
-    ## demo data
-    return "성수"
+    area_name = map_query_to_venue(tag)
+    if area_name is None: 
+        return None
+    return area_name
         
 def set_venue_name(area, hashtags):
     for hashtag in hashtags:

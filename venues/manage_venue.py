@@ -3,7 +3,7 @@ import pymongo
 from pymongo import MongoClient
 client = MongoClient('localhost', 27017)
 db = client['scc-hotplace']
-collection = db['venues']
+collection = db['venuelist']
 
 area_list = [
         "가로수길", 
@@ -79,11 +79,11 @@ def read_venue_list(file, area):
             print("no such area")
             return -1     
         
-if __name__ == "__main__":
+# if __name__ == "__main__":
     ### updated lists
     # update_venue_list("gangnamgu.json", "강남역")
     # update_venue_list("seochogu.json", "강남역")
     # update_venue_list("seongdonggu.json", "성수")
 
-    search_venue("강남역", "티엔티엔티엔")
+    # search_venue("강남역", "티엔티엔티엔")
     
